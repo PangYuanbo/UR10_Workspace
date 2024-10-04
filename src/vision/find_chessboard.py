@@ -1,57 +1,92 @@
 import cv2
 import numpy as np
 
-def find_chessboard(image, roi=None):
-    if roi:
-        # 使用给定的 ROI 进行裁剪
-        x, y, w, h = roi
-        image = image[y:y+h, x:x+w]
-    else:
-        print("未提供ROI，检测整张图像")
+# YOLOv4-tiny 配置文件、权重文件和类别标签文件的路径
+yolo_cfg = "model/yolov4.cfg"
+yolo_weights = "model/yolov4.weights"
+yolo_names = "model/obj.names"
 
-    # 将图像转换为灰度
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# 读取类别名称
+with open(yolo_names, "r") as f:
+    classes = [line.strip() for line in f.readlines()]
 
-    # 使用高斯模糊去噪
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+# 加载 YOLOv4-tiny 模型
+net = cv2.dnn.readNet(yolo_weights, yolo_cfg)
 
-    # 使用 Canny 边缘检测
-    edges = cv2.Canny(blurred, 10, 100)
+# 使用 OpenCV 的 DNN 模块设置 YOLO 的后端和目标
+net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)  # 如果有 GPU，可以设置为 DNN_TARGET_CUDA
 
-    # 找到轮廓
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+# 获取 YOLO 输出层名称
+layer_names = net.getLayerNames()
+output_layers = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
-    # 初始化一张副本图像，用来绘制符合条件的轮廓
-    filtered_contours_image = image.copy()
+def detect_with_yolo(image):
+    height, width = image.shape[:2]
 
-    # 打印所有轮廓的面积，帮助调试
-    print(f"检测到的轮廓数量: {len(contours)}")
+    # YOLOv4-tiny 需要的图像预处理
+    blob = cv2.dnn.blobFromImage(image, 1/255.0, (416, 416), swapRB=True, crop=False)
+    net.setInput(blob)
 
-    # 遍历所有轮廓并过滤面积在 20,000 到 35,000 之间的轮廓
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if 20000 < area < 35000:
-            print(f"绘制轮廓，面积: {area}")
-            # 绘制面积符合条件的轮廓
-            cv2.drawContours(filtered_contours_image, [contour], -1, (0, 255, 0), 2)  # 绿色边框
+    # 进行前向传播，获得 YOLO 网络的输出
+    layer_outputs = net.forward(output_layers)
 
-    # 显示符合条件的轮廓
-    cv2.imshow("Filtered Contours (Area 20k-35k)", filtered_contours_image)
+    boxes = []
+    confidences = []
+    class_ids = []
 
-    # 等待用户按键关闭窗口
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # 遍历 YOLO 的输出，提取边框、置信度和类别
+    for output in layer_outputs:
+        for detection in output:
+            scores = detection[5:]
+            class_id = np.argmax(scores)
+            confidence = scores[class_id]
+
+            # 只考虑置信度大于某个阈值的检测
+            if confidence > 0.5:
+                box = detection[0:4] * np.array([width, height, width, height])
+                (centerX, centerY, w, h) = box.astype("int")
+
+                # 获得边框左上角坐标
+                x = int(centerX - (w / 2))
+                y = int(centerY - (h / 2))
+
+                boxes.append([x, y, int(w), int(h)])
+                confidences.append(float(confidence))
+                class_ids.append(class_id)
+
+    # 使用非极大值抑制 (NMS) 去除重复边框
+    indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
+
+    # 初始化用于绘制的副本图像
+    detected_image = image.copy()
+
+    # 遍历筛选出的边框
+    if len(indices) > 0:
+        for i in indices.flatten():
+            (x, y) = (boxes[i][0], boxes[i][1])
+            (w, h) = (boxes[i][2], boxes[i][3])
+
+            # 绘制边框和标签
+            color = (0, 255, 0)  # 绿色框
+            label = f"{classes[class_ids[i]]}: {confidences[i]:.2f}"
+            cv2.rectangle(detected_image, (x, y), (x + w, y + h), color, 2)
+            cv2.putText(detected_image, label, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+    return detected_image
 
 # 捕获摄像头图像
 cam = cv2.VideoCapture(0)
 result, image = cam.read()
 
 if result:
-    # 使用你提供的ROI坐标和大小
-    roi = (450, 240, 300, 300)  # 这是棋盘的近似位置
+    # 使用 YOLOv4-tiny 检测棋盘
+    detected_image = detect_with_yolo(image)
 
-    # 调用 find_chessboard 函数检测并绘制符合条件的轮廓
-    find_chessboard(image, roi)
+    # 显示 YOLOv4-tiny 检测结果
+    cv2.imshow("YOLOv4-tiny Detected Chessboard", detected_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 # 释放摄像头
 cam.release()
