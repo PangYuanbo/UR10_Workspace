@@ -1,6 +1,27 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import os
+
+# YOLOv4-tiny 配置文件、权重文件和类别标签文件的路径
+yolo_cfg = "model/yolov4.cfg"
+yolo_weights = "model/yolov4.weights"
+yolo_names = "model/obj.names"
+
+# 读取类别名称
+with open(yolo_names, "r") as f:
+    classes = [line.strip() for line in f.readlines()]
+
+# 加载 YOLOv4-tiny 模型
+net = cv2.dnn.readNet(yolo_weights, yolo_cfg)
+
+# 使用 OpenCV 的 DNN 模块设置 YOLO 的后端和目标
+net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)  # 如果有 GPU，可以设置为 DNN_TARGET_CUDA
+
+# 获取 YOLO 输出层名称
+layer_names = net.getLayerNames()
+output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
 
 # 使用摄像头捕获图像
 cam = cv2.VideoCapture(0)
