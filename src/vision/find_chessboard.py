@@ -21,9 +21,11 @@ def find_chessboard(image, roi=None):
     # 找到轮廓
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # 初始化变量存储最大轮廓
-    max_contour = None
-    max_area = 0
+    # 初始化一张副本图像，用来绘制所有轮廓
+    all_contours_image = image.copy()
+
+    # 绘制所有检测到的轮廓
+    cv2.drawContours(all_contours_image, contours, -1, (0, 255, 0), 2)  # 绘制所有轮廓，绿色边框
 
     # 打印所有轮廓的面积，帮助调试
     print(f"检测到的轮廓数量: {len(contours)}")
@@ -33,30 +35,12 @@ def find_chessboard(image, roi=None):
         area = cv2.contourArea(contour)
         print(f"轮廓面积: {area}")  # 打印每个轮廓的面积用于调试
 
-        # 过滤面积在20000到40000之间的轮廓
-        if 20000 < area < 40000:  # 根据实际面积调整范围
-            # 近似轮廓为多边形
-            epsilon = 0.02 * cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, epsilon, True)
+    # 显示所有轮廓
+    cv2.imshow("All Contours", all_contours_image)
 
-            # 打印近似多边形的顶点数
-            print(f"近似多边形顶点数: {len(approx)}")
-
-            # 如果近似的多边形有四个顶点，说明是一个矩形
-            if len(approx) == 4 and area > max_area:
-                max_contour = approx
-                max_area = area
-
-    # 如果找到合适的轮廓，绘制在原图上
-    if max_contour is not None:
-        # 绘制检测到的四边形（棋盘外边框）
-        cv2.drawContours(image, [max_contour], -1, (0, 255, 0), 3)
-
-        # 返回裁剪后的图像和棋盘轮廓
-        return image, max_contour
-    else:
-        print("未能检测到棋盘")
-        return image, None
+    # 等待用户按键关闭窗口
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 # 捕获摄像头图像
 cam = cv2.VideoCapture(0)
@@ -67,13 +51,7 @@ if result:
     roi = (450, 240, 300, 300)  # 这是棋盘的近似位置
 
     # 调用 find_chessboard 函数检测棋盘
-    detected_image, chessboard_contour = find_chessboard(image, roi)
-
-    # 显示结果图像
-    if detected_image is not None:
-        cv2.imshow("Detected Chessboard", detected_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+    find_chessboard(image, roi)
 
 # 释放摄像头
 cam.release()
