@@ -1,7 +1,16 @@
 import cv2
 import numpy as np
 
-def find_chessboard(image):
+
+def find_chessboard(image, roi=None):
+    if roi:
+        # 使用给定的 ROI 进行裁剪
+        x, y, w, h = roi
+        image = image[y:y + h, x:x + w]  # 截取ROI区域
+    else:
+        # 如果没有提供 ROI，使用整张图像
+        print("未提供ROI，检测整张图像")
+
     # 将图像转换为灰度
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -34,19 +43,27 @@ def find_chessboard(image):
 
     # 如果找到合适的轮廓，绘制在原图上
     if max_contour is not None:
+        # 如果使用了 ROI，需要将轮廓的位置偏移回原始图像的坐标系
+        if roi:
+            max_contour += np.array([[x, y]])  # 轮廓偏移
+
         cv2.drawContours(image, [max_contour], -1, (0, 255, 0), 3)
         return image, max_contour
     else:
         print("未能检测到棋盘")
         return image, None
 
+
 # 捕获摄像头图像
 cam = cv2.VideoCapture(0)
 result, image = cam.read()
 
 if result:
+    # 设定棋盘的近似位置 ROI (x, y, width, height)
+    roi = (450, 240, 300, 300)  # 根据你的实际情况调整 ROI 坐标和大小
+
     # 调用 find_chessboard 函数检测棋盘
-    detected_image, chessboard_contour = find_chessboard(image)
+    detected_image, chessboard_contour = find_chessboard(image, roi)
 
     # 显示结果图像
     cv2.imshow("Detected Chessboard", detected_image)
