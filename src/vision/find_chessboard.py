@@ -33,8 +33,8 @@ def find_chessboard(image, roi=None):
         area = cv2.contourArea(contour)
         print(f"轮廓面积: {area}")  # 打印每个轮廓的面积用于调试
 
-        # 调整轮廓面积的过滤条件
-        if area > 500:  # 调整面积阈值，如果太小或太大都可以修改
+        # 过滤面积接近棋盘大小的轮廓
+        if 50000 < area < 60000:  # 根据棋盘面积大小调整范围
             # 近似轮廓为多边形
             epsilon = 0.02 * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
