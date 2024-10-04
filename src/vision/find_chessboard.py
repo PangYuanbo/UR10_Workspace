@@ -15,8 +15,8 @@ def find_chessboard(image, roi=None):
     # 使用高斯模糊去噪
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # 使用 Canny 边缘检测
-    edges = cv2.Canny(blurred, 30, 150)
+    # 使用 Canny 边缘检测，调整阈值为更敏感的级别
+    edges = cv2.Canny(blurred, 10, 100)
 
     # 找到轮廓
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -25,11 +25,16 @@ def find_chessboard(image, roi=None):
     max_contour = None
     max_area = 0
 
+    # 打印所有轮廓的面积，帮助调试
+    print(f"检测到的轮廓数量: {len(contours)}")
+
     # 遍历所有轮廓
     for contour in contours:
         area = cv2.contourArea(contour)
-        # 如果轮廓面积足够大，并且是一个近似的矩形
-        if area > 1000:
+        print(f"轮廓面积: {area}")  # 打印每个轮廓的面积用于调试
+
+        # 调整轮廓面积的过滤条件
+        if area > 500:  # 调整面积阈值，如果太小或太大都可以修改
             # 近似轮廓为多边形
             epsilon = 0.02 * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
@@ -55,8 +60,8 @@ cam = cv2.VideoCapture(0)
 result, image = cam.read()
 
 if result:
-    # 设定棋盘的近似位置 ROI (x, y, width, height)
-    roi = (100, 100, 500, 500)  # 根据你的实际情况调整 ROI 坐标和大小
+    # 使用你提供的ROI坐标和大小
+    roi = (450, 240, 300, 300)  # 这是棋盘的近似位置
 
     # 调用 find_chessboard 函数检测棋盘
     detected_image, chessboard_contour = find_chessboard(image, roi)
