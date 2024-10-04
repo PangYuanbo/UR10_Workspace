@@ -21,22 +21,22 @@ def find_chessboard(image, roi=None):
     # 找到轮廓
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # 初始化一张副本图像，用来绘制所有轮廓
-    all_contours_image = image.copy()
-
-    # 绘制所有检测到的轮廓
-    cv2.drawContours(all_contours_image, contours, -1, (0, 255, 0), 2)  # 绘制所有轮廓，绿色边框
+    # 初始化一张副本图像，用来绘制符合条件的轮廓
+    filtered_contours_image = image.copy()
 
     # 打印所有轮廓的面积，帮助调试
     print(f"检测到的轮廓数量: {len(contours)}")
 
-    # 遍历所有轮廓
+    # 遍历所有轮廓并过滤面积在 20,000 到 35,000 之间的轮廓
     for contour in contours:
         area = cv2.contourArea(contour)
-        print(f"轮廓面积: {area}")  # 打印每个轮廓的面积用于调试
+        if 20000 < area < 35000:
+            print(f"绘制轮廓，面积: {area}")
+            # 绘制面积符合条件的轮廓
+            cv2.drawContours(filtered_contours_image, [contour], -1, (0, 255, 0), 2)  # 绿色边框
 
-    # 显示所有轮廓
-    cv2.imshow("All Contours", all_contours_image)
+    # 显示符合条件的轮廓
+    cv2.imshow("Filtered Contours (Area 20k-35k)", filtered_contours_image)
 
     # 等待用户按键关闭窗口
     cv2.waitKey(0)
@@ -50,7 +50,7 @@ if result:
     # 使用你提供的ROI坐标和大小
     roi = (450, 240, 300, 300)  # 这是棋盘的近似位置
 
-    # 调用 find_chessboard 函数检测棋盘
+    # 调用 find_chessboard 函数检测并绘制符合条件的轮廓
     find_chessboard(image, roi)
 
 # 释放摄像头
