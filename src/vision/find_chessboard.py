@@ -15,7 +15,7 @@ def find_chessboard(image, roi=None):
     # 使用高斯模糊去噪
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # 使用 Canny 边缘检测，调整阈值为更敏感的级别
+    # 使用 Canny 边缘检测
     edges = cv2.Canny(blurred, 10, 100)
 
     # 找到轮廓
@@ -33,11 +33,14 @@ def find_chessboard(image, roi=None):
         area = cv2.contourArea(contour)
         print(f"轮廓面积: {area}")  # 打印每个轮廓的面积用于调试
 
-        # 过滤面积接近棋盘大小的轮廓
-        if 50000 < area < 60000:  # 根据棋盘面积大小调整范围
+        # 过滤面积在20000到40000之间的轮廓
+        if 20000 < area < 40000:  # 根据实际面积调整范围
             # 近似轮廓为多边形
             epsilon = 0.02 * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
+
+            # 打印近似多边形的顶点数
+            print(f"近似多边形顶点数: {len(approx)}")
 
             # 如果近似的多边形有四个顶点，说明是一个矩形
             if len(approx) == 4 and area > max_area:
